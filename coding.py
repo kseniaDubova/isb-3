@@ -3,27 +3,28 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
-from PyQt5 import QtWidgets
 from cryptography.hazmat.primitives import padding as sym_padding
-from cryptography.hazmat.primitives.serialization import load_pem_public_key, load_pem_private_key
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 import logging
+from PyQt5.QtWidgets import QFileDialog
 
 
 class Coding:
     def __init__(self, size: int) -> None:
-        self.size = size
+
+        self.size = int(size/8)
+        self.way = str(QFileDialog.getExistingDirectory(
+            caption='Выбор директории'))
         self.settings = {
-            'initial_file': 'text.txt',
-            'encrypted_file': os.path.join("text", 'encrypted_file.txt'),
-            'decrypted_file': os.path.join("text", 'decrypted_file.txt'),
-            'symmetric_key': os.path.join("key", 'symmetric_key.txt'),
-            'public_key': os.path.join("key", 'public_key.txt'),
-            'private_key': os.path.join("key", 'private_key.txt'),
-            # 'encrypted_vector': os.path.join(self.way, 'encrypted_vector.txt')
+            'encrypted_file': os.path.join(self.way, 'encrypted_file.txt'),
+            'decrypted_file': os.path.join(self.way, 'decrypted_file.txt'),
+            'symmetric_key': os.path.join(self.way, 'symmetric_key.txt'),
+            'public_key': os.path.join(self.way, 'public_key.txt'),
+            'private_key': os.path.join(self.way, 'private_key.txt'),
+            'iv_path': os.path.join(self.way, 'iv_path.txt')
         }
 
-    def generation_key(self):
+    def generation_key(self) -> None:
 
         keys = rsa.generate_private_key(
             public_exponent=65537,
@@ -36,47 +37,106 @@ class Coding:
             with open(self.settings['public_key'], 'wb') as public_out:
                 public_out.write(public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                                          format=serialization.PublicFormat.SubjectPublicKeyInfo))
-        except:
-            logging.error(f"error in file")
-            #print('path of public key is not found')
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['public_key']}")
 
         try:
             with open(self.settings['private_key'], 'wb') as private_out:
                 private_out.write(private_key.private_bytes(encoding=serialization.Encoding.PEM,
                                                             format=serialization.PrivateFormat.TraditionalOpenSSL,
                                                             encryption_algorithm=serialization.NoEncryption()))
-        except:
-            logging.error(f"error in file")
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['private_key']}")
 
-        symmetric_key = os.urandom(16)
+        symmetric_key = os.urandom(self.size)
         ciphertext = public_key.encrypt(symmetric_key, padding.OAEP(mgf=padding.MGF1(
             algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
         try:
             with open(self.settings['symmetric_key'], "wb") as f:
                 f.write(ciphertext)
-        except FileNotFoundError:
-            logging.error(f"error in file")
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['symmetric_key']}")
 
+    def __sym_key(self) -> bytes:
+        try:
+            with open(self.settings['private_key'], "rb") as f:
+                private_key = serialization.load_pem_private_key(
+                    f.read(), password=None)
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при чтении из файла {self.settings['private_key']}")
 
-def encryption(self):
-    try:
-        with open(self.settings['private_key'], "rb") as f:
-            private_key = serialization.load_pem_private_key(
-                f.read(), password=None)
-    except FileExistsError:
-        print(f"{self.settings['private_key']} not found")
+        try:
+            with open(self.settings['symmetric_key'], "rb") as f:
+                encrypted_symmetric_key = f.read()
+            symmetric_key = private_key.decrypt(encrypted_symmetric_key, padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при чтении из файла {self.settings['symmetric_key']}")
 
-    try:
-        with open(self.settings['symmetric_key'], "rb") as f:
-            encrypted_symmetric_key = f.read()
-        symmetric_key = private_key.decrypt(encrypted_symmetric_key, padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
-    except FileNotFoundError:
-        print.error(f"{self.settings['symmetric_key']} not found")
-    # случайное значение для инициализации блочного режима, должно быть размером с блок и каждый раз новым
-    iv = os.urandom(16)
-    cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(iv))
-    encryptor = cipher.encryptor()
-   # c_text = sym_padding.PKCS7(128).padder()
-    c_text = encryptor.update(padded_text) + encryptor.finalize()
-   
+        return symmetric_key
+
+    def encryption(self) -> None:
+        way_e = str(QFileDialog.getOpenFileName(
+            caption='Выберите файл для шифрования', filter='*.txt'))
+        way_e = way_e.split('\'')[1]
+        symmetric_key = self.__sym_key()
+        try:
+            with open(way_e, 'r', encoding='utf-8') as f:
+                text = f.read()
+        except OSError as err:
+            logging.warning(f"{err} ошибка при чтении из файла {way_e}")
+
+        padder = sym_padding.ANSIX923(128).padder()
+        padded_text = padder.update(bytes(text, 'utf-8')) + padder.finalize()
+        iv = os.urandom(8)
+        cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(iv))
+        encryptor = cipher.encryptor()
+        c_text = encryptor.update(padded_text) + encryptor.finalize()
+
+        try:
+            with open(self.settings['iv_path'], 'wb') as key_file:
+                key_file.write(iv)
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['iv_path']}")
+
+        try:
+            with open(self.settings['encrypted_file'], 'wb') as f_text:
+                f_text.write(c_text)
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['encrypted_file']}")
+
+    def decryption(self) -> None:
+        symmetric_key = self.__sym_key()
+        try:
+            with open(self.settings['encrypted_file'], 'rb') as f:
+                en_text = f.read()
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при чтении из файла {self.settings['encrypted_file']}")
+
+        try:
+            with open(self.settings['iv_path'], "rb") as f:
+                iv = f.read()
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при чтении из файла {self.settings['iv_path']}")
+
+        cipher = Cipher(algorithms.TripleDES(symmetric_key), modes.CBC(iv))
+        decryptor = cipher.decryptor()
+        dc_text = decryptor.update(en_text) + decryptor.finalize()
+        unpadder = sym_padding.ANSIX923(128).unpadder()
+        unpadded_dc_text = unpadder.update(dc_text) + unpadder.finalize()
+
+        try:
+            with open(self.settings['decrypted_file'], 'wb') as f:
+                f.write(unpadded_dc_text)
+        except OSError as err:
+            logging.warning(
+                f"{err} ошибка при записи в файл {self.settings['decrypted_file']}")
