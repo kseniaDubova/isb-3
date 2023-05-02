@@ -1,15 +1,19 @@
-from PyQt5.QtWidgets import QPushButton, QApplication, QMainWindow, QLabel
-from PyQt5.QtGui import QPixmap
-import sys
-from PyQt5 import QtWidgets
 import re
-from coding import Coding as cd
+import sys
+
+from PyQt5 import QtWidgets
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import (QApplication, QLabel, QMainWindow, QPushButton, QFileDialog)
+from coding import Encryption as en
 
 
 class Window(QMainWindow):
     def __init__(self) -> None:
-        super(Window, self).__init__()
+        """
+        Функция инициализации
 
+        """
+        super(Window, self).__init__()
         self.setWindowTitle('3DES')
         self.setFixedSize(600, 400)
         self.background = QLabel(self)
@@ -17,58 +21,76 @@ class Window(QMainWindow):
         self.background.setPixmap(QPixmap("icon.jpg").scaled(600, 400))
         self.info = QLabel(self)
         self.info.setText("Выберите размер ключа")
-        self.info.setGeometry(225, 20, 200, 50)
+        self.info.setGeometry(225, 20, 500, 50)
         self.message = QLabel(self)
         self.message.setGeometry(225, 250, 200, 50)
-
-        self.botton_keys = QPushButton('Сгенерировать ключи', self)
-        self.botton_keys.setGeometry(200, 100, 200, 50)
-        self.botton_keys.clicked.connect(self.cleak_key)
-        self.botton_keys.hide()
-
+        self.button_keys = QPushButton('Сгенерировать ключи', self)
+        self.button_keys.setGeometry(200, 100, 200, 50)
+        self.button_keys.clicked.connect(self.cleak_key)
+        self.button_keys.hide()
         self.key_size = QtWidgets.QComboBox(self)
         self.key_size.addItems(["64 бит", "128 бит", "192 бит"])
         self.key_size.setGeometry(200, 50, 200, 50)
         self.key_size.activated[str].connect(self.on_activated)
-
-        self.botton_e = QPushButton('Зашифровать текст', self)
-        self.botton_e.setGeometry(200, 150, 200, 50)
-        self.botton_e.clicked.connect(self.cleak_e)
-        self.botton_e.hide()
-
-        self.botton_d = QPushButton('Дешифровать текст', self)
-        self.botton_d.setGeometry(200, 200, 200, 50)
-        self.botton_d.clicked.connect(self.cleak_d)
-        self.botton_d.hide()
-
+        self.button_e = QPushButton('Зашифровать текст', self)
+        self.button_e.setGeometry(200, 150, 200, 50)
+        self.button_e.clicked.connect(self.cleak_encryption)
+        self.button_e.hide()
+        self.button_d = QPushButton('Дешифровать текст', self)
+        self.button_d.setGeometry(200, 200, 200, 50)
+        self.button_d.clicked.connect(self.cleak_decryption)
+        self.button_d.hide()
         self.show()
 
     def on_activated(self, text: str) -> None:
+        """
+        Функция присвоения размера ключа
+
+        """
         self.size = int(re.findall('(\d+)', text)[0])
         self.info.setText("Сгенирируйте ключи")
-        self.botton_keys.show()
+        self.button_keys.show()
 
     def hidden(self) -> None:
+        """
+        Функция показа кнопок для шифрования и дешифрования после генерации ключей
 
-        self.botton_d.show()
-        self.botton_e.show()
+        """
+        self.button_d.show()
+        self.button_e.show()
 
     def cleak_key(self) -> None:
-        self.key = cd(self.size)
+        """
+        Функция генерации ключей
+
+        """
+        way = str(QFileDialog.getExistingDirectory(caption='Выбор директории'))
+        self.key = en(self.size, way)
         self.key.generation_key()
         self.info.setText("Ключи сгенерированы")
         self.message.setText("Зашифруйте текст")
         self.hidden()
 
-    def cleak_e(self) -> None:
-        self.key.encryption()
+    def cleak_encryption(self) -> None:
+        """
+        Функция шифрования
+
+        """
+        way_e = str(QFileDialog.getOpenFileName(caption='Выберите файл для шифрования', filter='*.txt'))
+        way_e = way_e.split('\'')[1]
+        self.key.encryption(way_e)
         self.info.setText("Текст зашифрован")
         self.message.setText("Расшифруйте текст")
 
-    def cleak_d(self) -> None:
-        self.key.decryption()
+    def cleak_decryption(self) -> None:
+        """
+        Функция дешифорвания
+
+        """
+        way = self.key.decryption()
         self.info.setText("Текст расшифрован")
-        self.message.setText("Готово!")
+        self.message.setGeometry(120,250,600,30)
+        self.message.setText(way)
 
 
 def application() -> None:
