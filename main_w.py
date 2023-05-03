@@ -26,7 +26,7 @@ class Window(QMainWindow):
         self.message.setGeometry(225, 250, 200, 50)
         self.button_keys = QPushButton('Сгенерировать ключи', self)
         self.button_keys.setGeometry(200, 100, 200, 50)
-        self.button_keys.clicked.connect(self.cleak_key)
+        self.button_keys.clicked.connect(self.generation_key)
         self.button_keys.hide()
         self.key_size = QtWidgets.QComboBox(self)
         self.key_size.addItems(["64 бит", "128 бит", "192 бит"])
@@ -34,11 +34,11 @@ class Window(QMainWindow):
         self.key_size.activated[str].connect(self.on_activated)
         self.button_e = QPushButton('Зашифровать текст', self)
         self.button_e.setGeometry(200, 150, 200, 50)
-        self.button_e.clicked.connect(self.cleak_encryption)
+        self.button_e.clicked.connect(self.encryption)
         self.button_e.hide()
         self.button_d = QPushButton('Дешифровать текст', self)
         self.button_d.setGeometry(200, 200, 200, 50)
-        self.button_d.clicked.connect(self.cleak_decryption)
+        self.button_d.clicked.connect(self.decryption)
         self.button_d.hide()
         self.show()
 
@@ -59,7 +59,7 @@ class Window(QMainWindow):
         self.button_d.show()
         self.button_e.show()
 
-    def cleak_key(self) -> None:
+    def generation_key(self) -> None:
         """
         Функция генерации ключей
 
@@ -71,7 +71,7 @@ class Window(QMainWindow):
         self.message.setText("Зашифруйте текст")
         self.hidden()
 
-    def cleak_encryption(self) -> None:
+    def encryption(self) -> None:
         """
         Функция шифрования
 
@@ -82,7 +82,7 @@ class Window(QMainWindow):
         self.info.setText("Текст зашифрован")
         self.message.setText("Расшифруйте текст")
 
-    def cleak_decryption(self) -> None:
+    def decryption(self) -> None:
         """
         Функция дешифорвания
 
